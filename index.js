@@ -74,6 +74,7 @@ function finder(container, data, options) {
   }
 
   container.setAttribute('tabindex', 0);
+  container.setAttribute('role', 'tree');
 
   return emitter;
 }
@@ -248,6 +249,11 @@ finder.navigate = function navigate(cfg, value) {
     } else if (dir === 'down' && item.nextSibling) {
       target = item.nextSibling;
     } else if (dir === 'right' && col.nextSibling) {
+      let expandingItem =
+        _.first(col, '.' + cfg.className.active) ||
+        _.first(col, '.' + cfg.className.item);
+      // This item is spawning another column, so mark it as expanded.
+      expandingItem.querySelector('a').setAttribute('aria-expanded', 'true');
       col = col.nextSibling;
       target = _.first(col, '.' + cfg.className.item);
     } else if (dir === 'left' && col.previousSibling) {
@@ -255,6 +261,8 @@ finder.navigate = function navigate(cfg, value) {
       target =
         _.first(col, '.' + cfg.className.active) ||
         _.first(col, '.' + cfg.className.item);
+      // When moving left, the item that spawned us is no longer collapsed.
+      _.first(target, 'a').setAttribute('aria-expanded', 'false');
     }
   } else {
     col = _.first(cfg.container, '.' + cfg.className.col);
@@ -329,6 +337,7 @@ finder.createColumn = function createColumn(data, cfg, parent) {
  */
 finder.createList = function createList(data, cfg) {
   var ul = _.el('ul');
+  ul.setAttribute('role', 'none');
   var items = data.map(function create(item) {
     return finder.createItem(cfg, item);
   });
@@ -374,7 +383,9 @@ finder.createItem = function createItem(cfg, item) {
   var frag = document.createDocumentFragment();
   var liClassNames = [cfg.className.item];
   var li = _.el('li');
+  li.setAttribute('role', 'none');
   var a = _.el('a');
+  a.setAttribute('role', 'treeitem');
   var createItemContent = cfg.createItemContent || finder.createItemContent;
 
   frag = createItemContent.call(null, cfg, item);
@@ -391,6 +402,9 @@ finder.createItem = function createItem(cfg, item) {
   }
   if (item[cfg.childKey]) {
     liClassNames.push(cfg.className[cfg.childKey]);
+    // Items with children are not expanded by default. Note that unexpandable
+    // items must not get this attribute at all.
+    a.setAttribute('aria-expanded', 'false');
   }
   _.addClass(li, liClassNames);
   li.appendChild(a);
